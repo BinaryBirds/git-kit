@@ -5,7 +5,6 @@ let package = Package(
     name: "git-kit",
     products: [
         .library(name: "GitKit", targets: ["GitKit"]),
-        .library(name: "GitKitDynamic", type: .dynamic, targets: ["GitKit"])
     ],
     dependencies: [
         .package(url: "https://github.com/binarybirds/shell-kit", from: "1.0.0"),
