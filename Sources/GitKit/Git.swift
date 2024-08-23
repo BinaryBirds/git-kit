@@ -16,6 +16,7 @@ public final class Git: Shell {
         case cmd(Command, String? = nil)
         case addAll
         case commit(message: String, Bool = false)
+        case config(name: String, value: String)
         case clone(url: String)
         case checkout(branch: String)
         case log(Int? = nil)
@@ -107,6 +108,8 @@ public final class Git: Shell {
                 params = [Command.remote.rawValue, "add", name, url]
             case .raw(let command):
                 params.append(command)
+            case .config(name: let name, value: let value):
+                params = [Command.config.rawValue, "--add", name, value]
             }
             return params
         }
