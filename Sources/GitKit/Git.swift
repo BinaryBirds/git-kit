@@ -30,6 +30,7 @@ public final class Git: Shell {
         case submoduleUpdate(init: Bool = false, recursive: Bool = false, rebase: Bool = false)
         case renameRemote(oldName: String, newName: String)
         case addRemote(name: String, url: String)
+        case revParse(abbrevRef: String)
         case raw(String)
 
         private func commandParams() -> [String] {
@@ -110,6 +111,8 @@ public final class Git: Shell {
                 params.append(command)
             case .config(name: let name, value: let value):
                 params = [Command.config.rawValue, "--add", name, value]
+            case .revParse(abbrevRef: let abbrevRef):
+                params = [Command.revParse.rawValue, "--abbrev-ref", abbrevRef]
             }
             return params
         }
@@ -185,6 +188,8 @@ public final class Git: Shell {
         case submodule
         /// Manage git remotes
         case remote
+        /// Get information about specific revisions
+        case revParse
     }
     
     // MARK: - private helper methods
