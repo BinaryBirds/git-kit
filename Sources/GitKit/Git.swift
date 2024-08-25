@@ -16,15 +16,21 @@ public final class Git: Shell {
         case cmd(Command, String? = nil)
         case addAll
         case commit(message: String, Bool = false)
+        case config(name: String, value: String)
         case clone(url: String)
         case checkout(branch: String)
         case log(Int? = nil)
         case push(remote: String? = nil, branch: String? = nil)
-        case pull(remote: String? = nil, branch: String? = nil)
+        case pull(remote: String? = nil, branch: String? = nil, rebase: Bool = false)
         case merge(branch: String)
         case create(branch: String)
         case delete(branch: String)
         case tag(String)
+        case fetch(remote: String? = nil, branch: String? = nil)
+        case submoduleUpdate(init: Bool = false, recursive: Bool = false, rebase: Bool = false)
+        case renameRemote(oldName: String, newName: String)
+        case addRemote(name: String, url: String)
+        case revParse(abbrevRef: String)
         case raw(String)
 
         private func commandParams() -> [String] {
@@ -59,8 +65,11 @@ public final class Git: Shell {
                 if let branch = branch {
                     params.append(branch)
                 }
-            case .pull(let remote, let branch):
+            case .pull(let remote, let branch, let rebase):
                 params = [Command.pull.rawValue]
+                if rebase {
+                    params.append("--rebase")
+                }
                 if let remote = remote {
                     params.append(remote)
                 }
@@ -75,8 +84,35 @@ public final class Git: Shell {
                 params = [Command.branch.rawValue, "-D", branch]
             case .tag(let name):
                 params = [Command.tag.rawValue, name]
+            case .fetch(let remote, let branch):
+                params = [Command.fetch.rawValue]
+                if let remote = remote {
+                    params.append(remote)
+                }
+                if let branch = branch {
+                    params.append(branch)
+                }
+            case .submoduleUpdate(let initialize, let recursive, let rebase):
+                params = [Command.submodule.rawValue, "update"]
+                if initialize {
+                    params.append("--init")
+                }
+                if recursive {
+                    params.append("--recursive")
+                }
+                if rebase {
+                    params.append("--rebase")
+                }
+            case .renameRemote(let oldName, let newName):
+                params = [Command.remote.rawValue, "rename", oldName, newName]
+            case .addRemote(let name, let url):
+                params = [Command.remote.rawValue, "add", name, url]
             case .raw(let command):
                 params.append(command)
+            case .config(name: let name, value: let value):
+                params = [Command.config.rawValue, "--add", name, value]
+            case .revParse(abbrevRef: let abbrevRef):
+                params = [Command.revParse.rawValue, "--abbrev-ref", abbrevRef]
             }
             return params
         }
@@ -148,6 +184,12 @@ public final class Git: Shell {
         case pull
         /// Update remote refs along with associated objects
         case push
+        /// Manage submodules
+        case submodule
+        /// Manage git remotes
+        case remote
+        /// Get information about specific revisions
+        case revParse
     }
     
     // MARK: - private helper methods
