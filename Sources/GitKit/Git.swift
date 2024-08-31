@@ -189,7 +189,7 @@ public final class Git: Shell {
         /// Manage git remotes
         case remote
         /// Get information about specific revisions
-        case revParse
+        case revParse = "rev-parse"
     }
     
     // MARK: - private helper methods
