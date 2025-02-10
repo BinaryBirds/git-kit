@@ -18,7 +18,7 @@ public final class Git: Shell {
         case status(short: Bool = false)
         case commit(message: String, Bool = false)
         case config(name: String, value: String)
-        case clone(url: String)
+        case clone(url: String , dirName: String? = nil)
         case checkout(branch: String, create: Bool = false)
         case log(numberOfCommits: Int? = nil, options: [String]? = nil, revisions: String? = nil)
         case push(remote: String? = nil, branch: String? = nil)
@@ -57,8 +57,11 @@ public final class Git: Shell {
                 if allowEmpty {
                     params.append("--allow-empty")
                 }
-            case .clone(let url):
+            case .clone(let url, let dirname):
                 params = [Command.clone.rawValue, url]
+                if let dirName = dirname {
+                    params.append(dirName)
+                }
             case .checkout(let branch, let create):
                 params = [Command.checkout.rawValue]
                 if create {
