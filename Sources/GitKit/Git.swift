@@ -32,6 +32,7 @@ public final class Git: Shell {
         case addRemote(name: String, url: String)
         case revParse(abbrevRef: String)
         case raw(String)
+        case lsRemote(url: String, limitToHeads: Bool = false)
 
         private func commandParams() -> [String] {
             var params: [String] = []
@@ -113,6 +114,12 @@ public final class Git: Shell {
                 params = [Command.config.rawValue, "--add", name, value]
             case .revParse(abbrevRef: let abbrevRef):
                 params = [Command.revParse.rawValue, "--abbrev-ref", abbrevRef]
+            case .lsRemote(url: let url, limitToHeads: let limitToHeads):
+                params = [Command.lsRemote.rawValue]
+                if limitToHeads {
+                    params.append("--heads")
+                }
+                params.append(url)
             }
             return params
         }
@@ -190,6 +197,8 @@ public final class Git: Shell {
         case remote
         /// Get information about specific revisions
         case revParse = "rev-parse"
+        /// List references in a remote repository
+        case lsRemote = "ls-remote"
     }
     
     // MARK: - private helper methods
