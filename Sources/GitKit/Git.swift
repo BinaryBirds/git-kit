@@ -19,7 +19,7 @@ public final class Git: Shell {
         case config(name: String, value: String)
         case clone(url: String)
         case checkout(branch: String)
-        case log(Int? = nil)
+        case log(numberOfCommits: Int? = nil, options: [String]? = nil, revisions: String? = nil)
         case push(remote: String? = nil, branch: String? = nil)
         case pull(remote: String? = nil, branch: String? = nil, rebase: Bool = false)
         case merge(branch: String)
@@ -53,10 +53,17 @@ public final class Git: Shell {
                 params = [Command.clone.rawValue, url]
             case .checkout(let branch):
                 params = [Command.checkout.rawValue, branch]
-            case .log(let n):
+            case .log(let numberOfCommits, let options, let revisions):
                 params = [Command.log.rawValue]
-                if let n = n {
-                    params.append("-\(n)")
+                if let numberOfCommits = numberOfCommits {
+                    params.append("-\(numberOfCommits)")
+                }
+                if let options = options {
+                    params.append(contentsOf: options)
+                }
+                params.append("--")
+                if let revisions = revisions {
+                    params.append(revisions)
                 }
             case .push(let remote, let branch):
                 params = [Command.push.rawValue]
