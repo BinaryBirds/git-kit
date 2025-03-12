@@ -15,6 +15,7 @@ public final class Git: Shell {
     public enum Alias {
         case cmd(Command, String? = nil)
         case addAll
+        case status(short: Bool = false)
         case commit(message: String, Bool = false)
         case config(name: String, value: String)
         case clone(url: String)
@@ -44,6 +45,11 @@ public final class Git: Shell {
                 }
             case .addAll:
                 params = [Command.add.rawValue, "."]
+            case .status(let short):
+                params = [Command.status.rawValue]
+                if short {
+                    params.append("--short")
+                }
             case .commit(let message, let allowEmpty):
                 params = [Command.commit.rawValue, "-m", "\"\(message)\""]
                 if allowEmpty {
