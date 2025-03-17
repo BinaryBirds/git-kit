@@ -29,6 +29,7 @@ public final class Git: Shell {
         case tag(String)
         case fetch(remote: String? = nil, branch: String? = nil)
         case submoduleUpdate(init: Bool = false, recursive: Bool = false, rebase: Bool = false)
+        case submoduleForeach(recursive: Bool = false, command: String)
         case renameRemote(oldName: String, newName: String)
         case addRemote(name: String, url: String)
         case revParse(abbrevRef: String)
@@ -117,6 +118,12 @@ public final class Git: Shell {
                 if rebase {
                     params.append("--rebase")
                 }
+            case .submoduleForeach(let recursive, let command):
+                params = [Command.submodule.rawValue, "foreach"]
+                if recursive {
+                    params.append("--recursive")
+                }
+                params.append(command)
             case .renameRemote(let oldName, let newName):
                 params = [Command.remote.rawValue, "rename", oldName, newName]
             case .addRemote(let name, let url):
