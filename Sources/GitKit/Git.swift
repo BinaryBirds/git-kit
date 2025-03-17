@@ -32,6 +32,7 @@ public final class Git: Shell {
         case renameRemote(oldName: String, newName: String)
         case addRemote(name: String, url: String)
         case revParse(abbrevRef: String)
+        case revList(branch: String, count: Bool = false, revisions: String? = nil)
         case raw(String)
         case lsRemote(url: String, limitToHeads: Bool = false)
 
@@ -127,6 +128,14 @@ public final class Git: Shell {
                 params = [Command.config.rawValue, "--add", name, value]
             case .revParse(abbrevRef: let abbrevRef):
                 params = [Command.revParse.rawValue, "--abbrev-ref", abbrevRef]
+            case .revList(let branch, let count, let revisions):
+                params = [Command.revList.rawValue]
+                if count {
+                    params.append("--count")
+                }
+                if let revisions = revisions {
+                    params.append(revisions)
+                }
             case .lsRemote(url: let url, limitToHeads: let limitToHeads):
                 params = [Command.lsRemote.rawValue]
                 if limitToHeads {
@@ -210,6 +219,8 @@ public final class Git: Shell {
         case remote
         /// Get information about specific revisions
         case revParse = "rev-parse"
+        /// Lists commit objects in reverse chronological order
+        case revList = "rev-list"
         /// List references in a remote repository
         case lsRemote = "ls-remote"
     }
