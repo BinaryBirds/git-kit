@@ -11,15 +11,17 @@ on:
       - ".github/workflows/test.yml"
 
 jobs:
-  test-macos:
-    name: Test on macOS
-    runs-on: macos-15
+  test:
+    name: Run tests
+    strategy:
+      matrix:
+        os: [macos-15, macos-14]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - run: make test
-  test-linux:
-    name: Test on Linux
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+
+      # there are unit tests that rely on the default branch name being `main`
+      - name: Set Git default branch name
+        run: git config --global init.defaultBranch main
+
       - run: make test
