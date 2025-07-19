@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # there are unit tests that rely on the default branch name being `main`
+      # there are unit tests that rely on the default branch name being `main` but this isn't the case on GitHub Actions runners
       - name: Set Git default branch name
         run: git config --global init.defaultBranch main
 
