@@ -1,5 +1,3 @@
-# this file is hardlinked so that it exists as both //.github/workflows/test.yml and //test.yml. this is because Swift package manager will not pull in hidden files into the generated Xcode project when opened from package.swift
-
 name: Test
 on:
   push:
