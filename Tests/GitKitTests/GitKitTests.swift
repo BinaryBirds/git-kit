@@ -82,15 +82,15 @@ final class GitKitTests: XCTestCase {
     func testCommandWithArgs() throws {
         let path = self.currentPath()
 
-        try self._test(.cmd(.branch, "-a"), path: path, expectation: "* master")
+        try self._test(.cmd(.branch, "-a"), path: path, expectation: "* main")
     }
     
     func testClone() throws {
         let path = self.currentPath()
         
         let expectation = """
-            On branch master
-            Your branch is up to date with 'origin/master'.
+            On branch main
+            Your branch is up to date with 'origin/main'.
 
             nothing to commit, working tree clean
             """
@@ -109,7 +109,7 @@ final class GitKitTests: XCTestCase {
         let path = self.currentPath()
         try self.clean(path: path)
         let expectedOutput = """
-            On branch master
+            On branch main
             nothing to commit, working tree clean
             """
         
