@@ -117,7 +117,7 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: path)
         let git = Git(path: path)
         
-        try git.run(.clone(url: "git@github.com:binarybirds/shell-kit", dirName: "MyCustomDirectory"))
+        try git.run(.clone(url: "https://github.com/binarybirds/shell-kit.git", dirName: "MyCustomDirectory"))
         let statusOutput = try git.run("cd \(path)/MyCustomDirectory && git status")
         try self.clean(path: path)
         self.assert(type: "output", result: statusOutput, expected: expectation)
