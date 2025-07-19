@@ -103,6 +103,25 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: path)
         self.assert(type: "output", result: statusOutput, expected: expectation)
     }
+    
+    func testCloneWithDirectory() throws {
+        let path = self.currentPath()
+        
+        let expectation = """
+            On branch main
+            Your branch is up to date with 'origin/main'.
+
+            nothing to commit, working tree clean
+            """
+
+        try self.clean(path: path)
+        let git = Git(path: path)
+        
+        try git.run(.clone(url: "git@github.com:binarybirds/shell-kit", dirName: "MyCustomDirectory"))
+        let statusOutput = try git.run("cd \(path)/MyCustomDirectory && git status")
+        try self.clean(path: path)
+        self.assert(type: "output", result: statusOutput, expected: expectation)
+    }
 
     #if os(macOS)
     func testAsyncRun() throws {
