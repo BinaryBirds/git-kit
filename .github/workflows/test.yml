@@ -16,5 +16,13 @@ jobs:
     runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
+      - name: Replicate failing test logic
+        run: |
+          mkdir test
+          pushd test
+          git init
+          git commit -m 'initial' --allow-empty --no-gpg-sign
+          git branch -a
+          popd
       - run: make test
       
