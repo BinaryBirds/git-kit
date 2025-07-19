@@ -74,7 +74,7 @@ final class GitKitTests: XCTestCase {
         let git = Git(path: path)
         try git.run(.cmd(.initialize))
         try git.run(.commit(message: expectation, true))
-        let out = try git.run(.log(1))
+        let out = try git.run(.log(numberOfCommits: 1))
         try self.clean(path: path)
         XCTAssertTrue(out.hasSuffix(expectation), "Commit was not created.")
     }
