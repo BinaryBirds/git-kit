@@ -11,18 +11,15 @@ on:
       - ".github/workflows/test.yml"
 
 jobs:
-  test:
-    name: Test
-    runs-on: macos-13
+  test-macos:
+    name: Test on macOS
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Replicate failing test logic
-        run: |
-          mkdir test
-          pushd test
-          git init
-          git commit -m 'initial' --allow-empty --no-gpg-sign
-          git branch -a
-          popd
       - run: make test
-      
+  test-linux:
+    name: Test on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: make test
