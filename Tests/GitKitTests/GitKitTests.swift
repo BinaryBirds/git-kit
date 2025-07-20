@@ -26,6 +26,7 @@ final class GitKitTests: XCTestCase {
         ("testCommandWithArgs", testCommandWithArgs),
         ("testClone", testClone),
         ("testCheckoutRemoteTracking", testCheckoutRemoteTracking),
+        ("testRevParse", testRevParse),
     ]
     
     // MARK: - helpers
@@ -50,7 +51,7 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: path)
         let expectedOutput = expectation
         let git = Git(path: path)
-        try git.run(.raw("init && git commit -m 'initial' --allow-empty"))
+        try git.run(.raw("init && git commit -m 'initial' --allow-empty --no-gpg-sign"))
         let output = try git.run(alias)
         self.assert(type: "output", result: output, expected: expectedOutput)
         try self.clean(path: path)
@@ -74,8 +75,8 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: path)
         let git = Git(path: path)
         try git.run(.cmd(.initialize))
-        try git.run(.commit(message: expectation, true))
-        let out = try git.run(.log(1))
+        try git.run(.commit(message: expectation, allowEmpty: true))
+        let out = try git.run(.log(numberOfCommits: 1))
         try self.clean(path: path)
         XCTAssertTrue(out.hasSuffix(expectation), "Commit was not created.")
     }
@@ -83,15 +84,15 @@ final class GitKitTests: XCTestCase {
     func testCommandWithArgs() throws {
         let path = self.currentPath()
 
-        try self._test(.cmd(.branch, "-a"), path: path, expectation: "* master")
+        try self._test(.cmd(.branch, "-a"), path: path, expectation: "* main")
     }
     
     func testClone() throws {
         let path = self.currentPath()
         
         let expectation = """
-            On branch master
-            Your branch is up to date with 'origin/master'.
+            On branch main
+            Your branch is up to date with 'origin/main'.
 
             nothing to commit, working tree clean
             """
@@ -99,19 +100,14 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: path)
         let git = Git(path: path)
         
-        try git.run(.clone(url: "git@github.com:binarybirds/shell-kit"))
+        try git.run(.clone(url: "https://github.com/binarybirds/shell-kit.git"))
         let statusOutput = try git.run("cd \(path)/shell-kit && git status")
         try self.clean(path: path)
         self.assert(type: "output", result: statusOutput, expected: expectation)
     }
 
     func testCheckoutRemoteTracking() throws {
-        let path = self.currentPath()
-        
-        try self.clean(path: path)
-        let git = Git(path: path)
-
-        try git.run(.clone(url: "https://github.com/binarybirds/shell-kit.git"))
+      try git.run(.clone(url: "https://github.com/binarybirds/shell-kit.git"))
 
         let repoPath = "\(path)/shell-kit"
         let repoGit = Git(path: repoPath)
@@ -124,17 +120,43 @@ final class GitKitTests: XCTestCase {
         XCTAssertTrue(branchOutput.contains("origin/main"), "Branch should track origin/main")
     }
 
+    func testRevParse() throws {
+
+        let path = self.currentPath()
+        
+        try self.clean(path: path)
+        let git = Git(path: path)
+
+        try git.run(.raw("init"))
+        try git.run(.commit(message: "initial commit", allowEmpty: true))
+
+        let abbrevRef = try git.run(.revParse(abbrevRef: true, revision: "HEAD"))
+        XCTAssertEqual(abbrevRef, "main", "Should return abbreviated reference name")
+
+        let fullSHA = try git.run(.revParse(abbrevRef: false, revision: "HEAD"))
+        XCTAssertTrue(fullSHA.count == 40, "Should return full 40-character SHA")
+        XCTAssertTrue(fullSHA.allSatisfy { $0.isHexDigit }, "SHA should contain only hex characters")
+
+        let symbolicRef = try git.run(.revParse(abbrevRef: false, revision: "@"))
+        XCTAssertEqual(symbolicRef, fullSHA, "Symbolic '@' should resolve to same SHA as HEAD")
+
+        let currentBranch = try git.run(.revParse(abbrevRef: true, revision: "@"))
+        XCTAssertEqual(currentBranch, "main", "Should return current branch name")
+
+        try self.clean(path: path)
+    }
+
     #if os(macOS)
     func testAsyncRun() throws {
         let path = self.currentPath()
         try self.clean(path: path)
         let expectedOutput = """
-            On branch master
+            On branch main
             nothing to commit, working tree clean
             """
         
         let git = Git(path: path)
-        try git.run(.raw("init && git commit -m 'initial' --allow-empty"))
+        try git.run(.raw("init && git commit -m 'initial' --allow-empty --no-gpg-sign"))
         
         let expectation = XCTestExpectation(description: "Shell command finished.")
         git.run(.cmd(.status)) { result, error in
