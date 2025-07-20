@@ -16,16 +16,11 @@ public final class Git: Shell {
         case cmd(Command, String? = nil)
         case addAll
         case status(short: Bool = false)
+        case clone(url: String , dirName: String? = nil)
         case commit(message: String, allowEmpty: Bool = false, gpgSigned: Bool = false)
         case writeConfig(name: String, value: String)
         case readConfig(name: String)
-        case clone(url: String)
-
-        /// - parameter branch the name of the branch to checkout
-        /// - parameter create whether to create a new branch or checkout an existing one
-        /// - parameter tracking when creating a new branch, the name of the remote branch it should track
-        case checkout(branch: String, create: Bool = false, tracking: String? = nil)
-
+        case checkout(branch: String, create: Bool = false)
         case log(numberOfCommits: Int? = nil, options: [String]? = nil, revisions: String? = nil)
         case push(remote: String? = nil, branch: String? = nil)
         case pull(remote: String? = nil, branch: String? = nil, rebase: Bool = false)
@@ -69,20 +64,21 @@ public final class Git: Shell {
                 }
                 if gpgSigned {
                     params.append("--gpg-sign")
-                } else {
+                }
+                else {
                     params.append("--no-gpg-sign")
                 }
-            case .clone(let url):
+            case .clone(let url, let dirname):
                 params = [Command.clone.rawValue, url]
-            case .checkout(let branch, let create, let tracking):
+                if let dirName = dirname {
+                    params.append(dirName)
+                }
+            case .checkout(let branch, let create):
                 params = [Command.checkout.rawValue]
                 if create {
                     params.append("-b")
                 }
                 params.append(branch)
-                if let tracking {
-                    params.append(tracking)
-                }
             case .log(let numberOfCommits, let options, let revisions):
                 params = [Command.log.rawValue]
                 if let numberOfCommits = numberOfCommits {
