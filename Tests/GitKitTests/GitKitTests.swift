@@ -25,6 +25,7 @@ final class GitKitTests: XCTestCase {
         ("testLog", testLog),
         ("testCommandWithArgs", testCommandWithArgs),
         ("testClone", testClone),
+        ("testCheckoutRemoteTracking", testCheckoutRemoteTracking),
     ]
     
     // MARK: - helpers
@@ -102,6 +103,25 @@ final class GitKitTests: XCTestCase {
         let statusOutput = try git.run("cd \(path)/shell-kit && git status")
         try self.clean(path: path)
         self.assert(type: "output", result: statusOutput, expected: expectation)
+    }
+
+    func testCheckoutRemoteTracking() throws {
+        let path = self.currentPath()
+        
+        try self.clean(path: path)
+        let git = Git(path: path)
+
+        try git.run(.clone(url: "https://github.com/binarybirds/shell-kit.git"))
+
+        let repoPath = "\(path)/shell-kit"
+        let repoGit = Git(path: repoPath)
+
+        try repoGit.run(.checkout(branch: "feature-branch", create: true, tracking: "origin/main"))
+        let branchOutput = try repoGit.run(.raw("branch -vv"))
+        try self.clean(path: path)
+
+        XCTAssertTrue(branchOutput.contains("feature-branch"), "New branch should be created")
+        XCTAssertTrue(branchOutput.contains("origin/main"), "Branch should track origin/main")
     }
 
     #if os(macOS)
