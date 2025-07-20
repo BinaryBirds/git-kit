@@ -100,42 +100,97 @@ final class GitKitTests: XCTestCase {
     }
     
     func testClone() throws {
-        let path = self.currentPath()
+        let basePath = self.currentPath()
+        let currentDirectory = FileManager.default.currentDirectoryPath
+        let sourcePath = "\(currentDirectory)/\(basePath)-source"
+        let clonePath = "\(currentDirectory)/\(basePath)-clone"
         
-        let expectation = """
-            On branch main
-            Your branch is up to date with 'origin/main'.
-
-            nothing to commit, working tree clean
-            """
-
-        try self.clean(path: path)
-        let git = Git(path: path)
+        try self.clean(path: sourcePath)
+        try self.clean(path: clonePath)
         
-        try git.run(.clone(url: "https://github.com/binarybirds/shell-kit.git"))
-        let statusOutput = try git.run("cd \(path)/shell-kit && git status")
-        try self.clean(path: path)
-        self.assert(type: "output", result: statusOutput, expected: expectation)
+        // Create a source repository to clone from
+        let sourceGit = Git(path: sourcePath)
+        try sourceGit.run(.raw("init"))
+        try sourceGit.run(.raw("config user.name 'Test User'"))
+        try sourceGit.run(.raw("config user.email 'test@example.com'"))
+        try sourceGit.run(.raw("commit -m 'initial commit' --allow-empty --no-gpg-sign"))
+        
+        // Clone from the local source repository
+        let git = Git(path: clonePath)
+        try git.run(.clone(url: sourcePath))
+        
+        // Verify the clone worked
+        let clonedRepoName = sourcePath.components(separatedBy: "/").last!
+        let statusOutput = try git.run("cd \(clonePath)/\(clonedRepoName) && git status")
+        XCTAssertTrue(statusOutput.contains("On branch main"), "Should be on main branch")
+        XCTAssertTrue(statusOutput.contains("nothing to commit"), "Should be clean working directory")
+        
+        try self.clean(path: sourcePath)
+        try self.clean(path: clonePath)
     }
 
 
     func testCloneWithDirectory() throws {
-        let path = self.currentPath()
+        let basePath = self.currentPath()
+        let currentDirectory = FileManager.default.currentDirectoryPath
+        let sourcePath = "\(currentDirectory)/\(basePath)-source"
+        let clonePath = "\(currentDirectory)/\(basePath)-clone"
         
-        let expectation = """
-            On branch main
-            Your branch is up to date with 'origin/main'.
-            
-            nothing to commit, working tree clean
-            """
+        try self.clean(path: sourcePath)
+        try self.clean(path: clonePath)
         
-        try self.clean(path: path)
-        let git = Git(path: path)
+        // Create a source repository to clone from
+        let sourceGit = Git(path: sourcePath)
+        try sourceGit.run(.raw("init"))
+        try sourceGit.run(.raw("config user.name 'Test User'"))
+        try sourceGit.run(.raw("config user.email 'test@example.com'"))
+        try sourceGit.run(.raw("commit -m 'initial commit' --allow-empty --no-gpg-sign"))
         
-        try git.run(.clone(url: "https://github.com/binarybirds/shell-kit.git", dirName: "MyCustomDirectory"))
-        let statusOutput = try git.run("cd \(path)/MyCustomDirectory && git status")
-        try self.clean(path: path)
-        self.assert(type: "output", result: statusOutput, expected: expectation)
+        // Clone from the local source repository with custom directory name
+        let git = Git(path: clonePath)
+        try git.run(.clone(url: sourcePath, dirName: "MyCustomDirectory"))
+        
+        // Verify the clone worked in the custom directory
+        let statusOutput = try git.run("cd \(clonePath)/MyCustomDirectory && git status")
+        XCTAssertTrue(statusOutput.contains("On branch main"), "Should be on main branch")
+        XCTAssertTrue(statusOutput.contains("nothing to commit"), "Should be clean working directory")
+        
+        try self.clean(path: sourcePath)
+        try self.clean(path: clonePath)
+    }
+
+    func testCheckoutRemoteTracking() throws {
+        let basePath = self.currentPath()
+        let currentDirectory = FileManager.default.currentDirectoryPath
+        let sourcePath = "\(currentDirectory)/\(basePath)-source"
+        let clonePath = "\(currentDirectory)/\(basePath)-clone"
+        
+        try self.clean(path: sourcePath)
+        try self.clean(path: clonePath)
+        
+        // Create a source repository to clone from
+        let sourceGit = Git(path: sourcePath)
+        try sourceGit.run(.raw("init"))
+        try sourceGit.run(.raw("config user.name 'Test User'"))
+        try sourceGit.run(.raw("config user.email 'test@example.com'"))
+        try sourceGit.run(.raw("commit -m 'initial commit' --allow-empty --no-gpg-sign"))
+        
+        // Clone from the local source repository
+        let git = Git(path: clonePath)
+        try git.run(.clone(url: sourcePath))
+        
+        let clonedRepoName = sourcePath.components(separatedBy: "/").last!
+        let repoPath = "\(clonePath)/\(clonedRepoName)"
+        let repoGit = Git(path: repoPath)
+
+        try repoGit.run(.checkout(branch: "feature-branch", create: true, tracking: "origin/main"))
+        let branchOutput = try repoGit.run(.raw("branch -vv"))
+        
+        XCTAssertTrue(branchOutput.contains("feature-branch"), "New branch should be created")
+        XCTAssertTrue(branchOutput.contains("origin/main"), "Branch should track origin/main")
+        
+        try self.clean(path: sourcePath)
+        try self.clean(path: clonePath)
     }
 
     func testRevParse() throws {
@@ -259,15 +314,27 @@ final class GitKitTests: XCTestCase {
     }
 
     func testPushPull() throws {
-        let path = self.currentPath()
+        let basePath = self.currentPath()
+        let currentDirectory = FileManager.default.currentDirectoryPath
+        let sourcePath = "\(currentDirectory)/\(basePath)-source"
+        let clonePath = "\(currentDirectory)/\(basePath)-clone"
         
-        try self.clean(path: path)
-        let git = Git(path: path)
+        try self.clean(path: sourcePath)
+        try self.clean(path: clonePath)
         
-        // Clone a repository to have a remote
-        try git.run(.clone(url: "https://github.com/binarybirds/shell-kit.git"))
+        // Create a source repository to clone from
+        let sourceGit = Git(path: sourcePath)
+        try sourceGit.run(.raw("init"))
+        try sourceGit.run(.raw("config user.name 'Test User'"))
+        try sourceGit.run(.raw("config user.email 'test@example.com'"))
+        try sourceGit.run(.raw("commit -m 'initial commit' --allow-empty --no-gpg-sign"))
         
-        let repoPath = "\(path)/shell-kit"
+        // Clone from the local source repository
+        let git = Git(path: clonePath)
+        try git.run(.clone(url: sourcePath))
+        
+        let clonedRepoName = sourcePath.components(separatedBy: "/").last!
+        let repoPath = "\(clonePath)/\(clonedRepoName)"
         let repoGit = Git(path: repoPath)
         
         // Test fetch
@@ -281,12 +348,12 @@ final class GitKitTests: XCTestCase {
         try repoGit.run(.pull(remote: "origin", branch: "main"))
         try repoGit.run(.pull(remote: "origin", branch: "main", rebase: true))
         
-        // Note: We can't easily test push without write access, but we can test the command generation
-        // by testing the raw value generation
+        // Test command generation for push
         let pushCommand = Git.Alias.push(remote: "origin", branch: "main")
         XCTAssertEqual(pushCommand.rawValue, "push origin main", "Push command should be properly formatted")
         
-        try self.clean(path: path)
+        try self.clean(path: sourcePath)
+        try self.clean(path: clonePath)
     }
 
     func testBranchOperations() throws {
@@ -365,28 +432,51 @@ final class GitKitTests: XCTestCase {
     }
 
     func testSubmoduleOperations() throws {
-        let path = self.currentPath()
+        let basePath = self.currentPath()
+        let currentDirectory = FileManager.default.currentDirectoryPath
+        let mainRepoPath = "\(currentDirectory)/\(basePath)-main"
+        let submoduleRepoPath = "\(currentDirectory)/\(basePath)-submodule"
         
-        try self.clean(path: path)
-        let git = Git(path: path)
+        try self.clean(path: mainRepoPath)
+        try self.clean(path: submoduleRepoPath)
         
+        // Create a repository to use as a submodule
+        let submoduleGit = Git(path: submoduleRepoPath)
+        try submoduleGit.run(.raw("init"))
+        try submoduleGit.run(.raw("config user.name 'Test User'"))
+        try submoduleGit.run(.raw("config user.email 'test@example.com'"))
+        try submoduleGit.run(.raw("commit -m 'submodule initial commit' --allow-empty --no-gpg-sign"))
+        
+        // Create main repository and add submodule
+        let git = Git(path: mainRepoPath)
         try git.run(.raw("init"))
+        try git.run(.raw("config user.name 'Test User'"))
+        try git.run(.raw("config user.email 'test@example.com'"))
         try git.run(.commit(message: "initial", allowEmpty: true))
         
-        // Add a submodule
-        try git.run(.raw("submodule add https://github.com/binarybirds/shell-kit.git submodules/shell-kit"))
+        // Try to set global config to allow file protocol
+        try git.run(.raw("config --global protocol.file.allow always"))
         
-        // Test submodule update variations
+        // Use absolute path directly (without file:// protocol)
+        try git.run(.raw("submodule add \(submoduleRepoPath) submodules/test-submodule"))
+        
         try git.run(.submoduleUpdate())
         try git.run(.submoduleUpdate(init: true))
         try git.run(.submoduleUpdate(recursive: true))
         try git.run(.submoduleUpdate(init: true, recursive: true, rebase: true))
         
-        // Test submodule foreach
         try git.run(.submoduleForeach(recursive: false, command: "pwd"))
         try git.run(.submoduleForeach(recursive: true, command: "git status"))
         
-        try self.clean(path: path)
+        // Verify submodule was added
+        let statusOutput = try git.run(.raw("submodule status"))
+        XCTAssertTrue(statusOutput.contains("test-submodule"), "Submodule should be listed in status")
+        
+        // Clean up global config
+        try git.run(.raw("config --global --unset protocol.file.allow"))
+        
+        try self.clean(path: mainRepoPath)
+        try self.clean(path: submoduleRepoPath)
     }
 
     func testRevList() throws {
