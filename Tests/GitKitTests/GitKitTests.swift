@@ -25,6 +25,7 @@ final class GitKitTests: XCTestCase {
         ("testLog", testLog),
         ("testCommandWithArgs", testCommandWithArgs),
         ("testClone", testClone),
+        ("testRevParse", testRevParse),
     ]
     
     // MARK: - helpers
@@ -102,6 +103,31 @@ final class GitKitTests: XCTestCase {
         let statusOutput = try git.run("cd \(path)/shell-kit && git status")
         try self.clean(path: path)
         self.assert(type: "output", result: statusOutput, expected: expectation)
+    }
+
+    func testRevParse() throws {
+        let path = self.currentPath()
+        
+        try self.clean(path: path)
+        let git = Git(path: path)
+
+        try git.run(.raw("init"))
+        try git.run(.commit(message: "initial commit", allowEmpty: true))
+
+        let abbrevRef = try git.run(.revParse(abbrevRef: true, revision: "HEAD"))
+        XCTAssertEqual(abbrevRef, "main", "Should return abbreviated reference name")
+
+        let fullSHA = try git.run(.revParse(abbrevRef: false, revision: "HEAD"))
+        XCTAssertTrue(fullSHA.count == 40, "Should return full 40-character SHA")
+        XCTAssertTrue(fullSHA.allSatisfy { $0.isHexDigit }, "SHA should contain only hex characters")
+
+        let symbolicRef = try git.run(.revParse(abbrevRef: false, revision: "@"))
+        XCTAssertEqual(symbolicRef, fullSHA, "Symbolic '@' should resolve to same SHA as HEAD")
+
+        let currentBranch = try git.run(.revParse(abbrevRef: true, revision: "@"))
+        XCTAssertEqual(currentBranch, "main", "Should return current branch name")
+
+        try self.clean(path: path)
     }
 
     #if os(macOS)
