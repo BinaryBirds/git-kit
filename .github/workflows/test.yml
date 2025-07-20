@@ -1,0 +1,24 @@
+name: Test
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    paths:
+      - "Sources/**"
+      - "Tests/**"
+      - ".github/workflows/test.yml"
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # there are unit tests that rely on the default branch name being `main` but this isn't the case on GitHub Actions runners
+      - name: Set Git default branch name
+        run: git config --global init.defaultBranch main
+
+      - run: make test
