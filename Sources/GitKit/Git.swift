@@ -16,7 +16,7 @@ public final class Git: Shell {
         case cmd(Command, String? = nil)
         case addAll
         case status(short: Bool = false)
-        case commit(message: String, Bool = false)
+        case commit(message: String, allowEmpty: Bool = false, gpgSigned: Bool = false)
         case writeConfig(name: String, value: String)
         case readConfig(name: String)
         case clone(url: String)
@@ -53,10 +53,15 @@ public final class Git: Shell {
                 if short {
                     params.append("--short")
                 }
-            case .commit(let message, let allowEmpty):
+            case .commit(let message, let allowEmpty, let gpgSigned):
                 params = [Command.commit.rawValue, "-m", "\"\(message)\""]
                 if allowEmpty {
                     params.append("--allow-empty")
+                }
+                if gpgSigned {
+                    params.append("--gpg-sign")
+                } else {
+                    params.append("--no-gpg-sign")
                 }
             case .clone(let url):
                 params = [Command.clone.rawValue, url]
