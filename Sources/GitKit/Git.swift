@@ -20,7 +20,12 @@ public final class Git: Shell {
         case writeConfig(name: String, value: String)
         case readConfig(name: String)
         case clone(url: String)
-        case checkout(branch: String, create: Bool = false)
+
+        /// - parameter branch the name of the branch to checkout
+        /// - parameter create whether to create a new branch or checkout an existing one
+        /// - parameter tracking when creating a new branch, the name of the remote branch it should track
+        case checkout(branch: String, create: Bool = false, tracking: String? = nil)
+
         case log(numberOfCommits: Int? = nil, options: [String]? = nil, revisions: String? = nil)
         case push(remote: String? = nil, branch: String? = nil)
         case pull(remote: String? = nil, branch: String? = nil, rebase: Bool = false)
@@ -69,12 +74,15 @@ public final class Git: Shell {
                 }
             case .clone(let url):
                 params = [Command.clone.rawValue, url]
-            case .checkout(let branch, let create):
+            case .checkout(let branch, let create, let tracking):
                 params = [Command.checkout.rawValue]
                 if create {
                     params.append("-b")
                 }
                 params.append(branch)
+                if let tracking {
+                    params.append(tracking)
+                }
             case .log(let numberOfCommits, let options, let revisions):
                 params = [Command.log.rawValue]
                 if let numberOfCommits = numberOfCommits {
@@ -149,7 +157,7 @@ public final class Git: Shell {
                 params = [Command.config.rawValue, "--add", name, value]
             case .readConfig(let name):
                 params = [Command.config.rawValue, "--get", name]
-            case .revList(let branch, let count, let revisions):
+            case .revList(_, let count, let revisions):
                 params = [Command.revList.rawValue]
                 if count {
                     params.append("--count")
