@@ -113,7 +113,7 @@ final class GitKitTests: XCTestCase {
         
         // Initialize a repository and make an initial commit
         try git.run(.raw("init"))
-        try git.run(.commit(message: "initial commit", true))
+        try git.run(.commit(message: "initial commit", allowEmpty: true))
         
         // Test 1: Get abbreviated reference name for HEAD
         let abbrevRef = try git.run(.revParse(abbrevRef: true, revision: "HEAD"))
