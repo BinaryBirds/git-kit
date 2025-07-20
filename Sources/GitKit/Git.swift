@@ -149,6 +149,12 @@ public final class Git: Shell {
                 if let revisions = revisions {
                     params.append(revisions)
                 }
+            case .revParse(let abbrevRef, let revision):
+                params = [Command.revParse.rawValue]
+                if abbrevRef {
+                    params.append("--abbrev-ref")
+                }
+                params.append(revision)
             case .lsRemote(url: let url, limitToHeads: let limitToHeads):
                 params = [Command.lsRemote.rawValue]
                 if limitToHeads {
