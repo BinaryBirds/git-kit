@@ -16,8 +16,9 @@ public final class Git: Shell {
         case cmd(Command, String? = nil)
         case addAll
         case status(short: Bool = false)
-        case commit(message: String, Bool = false)
-        case config(name: String, value: String)
+        case commit(message: String, allowEmpty: Bool = false, gpgSigned: Bool = false)
+        case writeConfig(name: String, value: String)
+        case readConfig(name: String)
         case clone(url: String)
         case checkout(branch: String, create: Bool = false)
         case log(numberOfCommits: Int? = nil, options: [String]? = nil, revisions: String? = nil)
@@ -56,10 +57,15 @@ public final class Git: Shell {
                 if short {
                     params.append("--short")
                 }
-            case .commit(let message, let allowEmpty):
+            case .commit(let message, let allowEmpty, let gpgSigned):
                 params = [Command.commit.rawValue, "-m", "\"\(message)\""]
                 if allowEmpty {
                     params.append("--allow-empty")
+                }
+                if gpgSigned {
+                    params.append("--gpg-sign")
+                } else {
+                    params.append("--no-gpg-sign")
                 }
             case .clone(let url):
                 params = [Command.clone.rawValue, url]
@@ -139,8 +145,10 @@ public final class Git: Shell {
                 params = [Command.remote.rawValue, "add", name, url]
             case .raw(let command):
                 params.append(command)
-            case .config(name: let name, value: let value):
+            case .writeConfig(let name, let value):
                 params = [Command.config.rawValue, "--add", name, value]
+            case .readConfig(let name):
+                params = [Command.config.rawValue, "--get", name]
             case .revList(let branch, let count, let revisions):
                 params = [Command.revList.rawValue]
                 if count {
