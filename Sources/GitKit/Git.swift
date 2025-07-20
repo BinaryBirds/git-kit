@@ -157,7 +157,7 @@ public final class Git: Shell {
                 params = [Command.config.rawValue, "--add", name, value]
             case .readConfig(let name):
                 params = [Command.config.rawValue, "--get", name]
-            case .revList(let branch, let count, let revisions):
+            case .revList(_, let count, let revisions):
                 params = [Command.revList.rawValue]
                 if count {
                     params.append("--count")

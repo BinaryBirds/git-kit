@@ -107,7 +107,11 @@ final class GitKitTests: XCTestCase {
     }
 
     func testCheckoutRemoteTracking() throws {
-      try git.run(.clone(url: "https://github.com/binarybirds/shell-kit.git"))
+        let path = self.currentPath()
+        try self.clean(path: path)
+        let git = Git(path: path)
+        
+        try git.run(.clone(url: "https://github.com/binarybirds/shell-kit.git"))
 
         let repoPath = "\(path)/shell-kit"
         let repoGit = Git(path: repoPath)
@@ -121,9 +125,7 @@ final class GitKitTests: XCTestCase {
     }
 
     func testRevParse() throws {
-
         let path = self.currentPath()
-        
         try self.clean(path: path)
         let git = Git(path: path)
 
