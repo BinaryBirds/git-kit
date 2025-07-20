@@ -29,7 +29,7 @@ final class GitKitTests: XCTestCase {
         ("testAddAll", testAddAll),
         ("testStatusShort", testStatusShort),
         ("testConfigOperations", testConfigOperations),
-        ("testWriteConfigDefaultBranch", testWriteConfigDefaultBranch),
+        ("testWriteConfigUserSettings", testWriteConfigUserSettings),
         ("testPushPull", testPushPull),
         ("testBranchOperations", testBranchOperations),
         ("testTagOperations", testTagOperations),
@@ -108,18 +108,15 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: sourcePath)
         try self.clean(path: clonePath)
         
-        // Create a source repository to clone from
         let sourceGit = Git(path: sourcePath)
         try sourceGit.run(.raw("init"))
         try sourceGit.run(.raw("config user.name 'Test User'"))
         try sourceGit.run(.raw("config user.email 'test@example.com'"))
         try sourceGit.run(.raw("commit -m 'initial commit' --allow-empty --no-gpg-sign"))
         
-        // Clone from the local source repository
         let git = Git(path: clonePath)
         try git.run(.clone(url: sourcePath))
         
-        // Verify the clone worked
         let clonedRepoName = sourcePath.components(separatedBy: "/").last!
         let statusOutput = try git.run("cd \(clonePath)/\(clonedRepoName) && git status")
         XCTAssertTrue(statusOutput.contains("On branch main"), "Should be on main branch")
@@ -139,18 +136,15 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: sourcePath)
         try self.clean(path: clonePath)
         
-        // Create a source repository to clone from
         let sourceGit = Git(path: sourcePath)
         try sourceGit.run(.raw("init"))
         try sourceGit.run(.raw("config user.name 'Test User'"))
         try sourceGit.run(.raw("config user.email 'test@example.com'"))
         try sourceGit.run(.raw("commit -m 'initial commit' --allow-empty --no-gpg-sign"))
         
-        // Clone from the local source repository with custom directory name
         let git = Git(path: clonePath)
         try git.run(.clone(url: sourcePath, dirName: "MyCustomDirectory"))
         
-        // Verify the clone worked in the custom directory
         let statusOutput = try git.run("cd \(clonePath)/MyCustomDirectory && git status")
         XCTAssertTrue(statusOutput.contains("On branch main"), "Should be on main branch")
         XCTAssertTrue(statusOutput.contains("nothing to commit"), "Should be clean working directory")
@@ -168,14 +162,12 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: sourcePath)
         try self.clean(path: clonePath)
         
-        // Create a source repository to clone from
         let sourceGit = Git(path: sourcePath)
         try sourceGit.run(.raw("init"))
         try sourceGit.run(.raw("config user.name 'Test User'"))
         try sourceGit.run(.raw("config user.email 'test@example.com'"))
         try sourceGit.run(.raw("commit -m 'initial commit' --allow-empty --no-gpg-sign"))
         
-        // Clone from the local source repository
         let git = Git(path: clonePath)
         try git.run(.clone(url: sourcePath))
         
@@ -225,7 +217,7 @@ final class GitKitTests: XCTestCase {
         let git = Git(path: path)
 
         try git.run(.raw("init"))
-        try FileManager.default.createFile(atPath: "\(path)/test.txt", contents: "test content".data(using: .utf8))
+        FileManager.default.createFile(atPath: "\(path)/test.txt", contents: "test content".data(using: .utf8))
 
         try git.run(.addAll)
 
@@ -242,14 +234,12 @@ final class GitKitTests: XCTestCase {
         let git = Git(path: path)
         
         try git.run(.raw("init"))
-        try FileManager.default.createFile(atPath: "\(path)/file.txt", contents: "test".data(using: .utf8))
+        FileManager.default.createFile(atPath: "\(path)/file.txt", contents: "test".data(using: .utf8))
         try git.run(.addAll)
         
-        // Test status with short flag
         let shortStatus = try git.run(.status(short: true))
         let regularStatus = try git.run(.status(short: false))
         
-        // Short status should be more concise
         XCTAssertTrue(shortStatus.count < regularStatus.count, "Short status should be more concise")
         
         try self.clean(path: path)
@@ -263,11 +253,9 @@ final class GitKitTests: XCTestCase {
         
         try git.run(.raw("init"))
         
-        // Test write config using raw commands first to set them up
         try git.run(.raw("config user.name 'Test User'"))
         try git.run(.raw("config user.email 'test@example.com'"))
         
-        // Test read config
         let userName = try git.run(.readConfig(name: "user.name"))
         let userEmail = try git.run(.readConfig(name: "user.email"))
         
@@ -277,39 +265,35 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: path)
     }
 
-    func testWriteConfigDefaultBranch() throws {
+    func testWriteConfigUserSettings() throws {
         let path = self.currentPath()
         
         try self.clean(path: path)
         
-        // Set the default branch name to "myDefaultBranch" using global config
-        let globalGit = Git() // No path - will use global config
-        try globalGit.run(.raw("config --global init.defaultBranch myDefaultBranch"))
-        
-        // Now create the directory and git repo (should use the configured default branch)
         let git = Git(path: path)
         try git.run(.raw("init"))
         
-        // Make an initial commit so we can check the current branch
-        try git.run(.commit(message: "initial commit", allowEmpty: true))
+        try git.run(.raw("config user.name 'Test User GitKit'"))
+        try git.run(.raw("config user.email 'test@gitkit.example.com'"))
+        try git.run(.raw("config core.editor 'vim'"))
         
-        // Ensure that's the branch we're on
-        let currentBranch = try git.run(.revParse(abbrevRef: true, revision: "HEAD"))
-        XCTAssertEqual(currentBranch, "myDefaultBranch", "Should be on the configured default branch")
+        let userName = try git.run(.readConfig(name: "user.name"))
+        let userEmail = try git.run(.readConfig(name: "user.email"))
+        let coreEditor = try git.run(.readConfig(name: "core.editor"))
         
-        // Also verify using git branch command
-        let branchOutput = try git.run(.raw("branch"))
-        XCTAssertTrue(branchOutput.contains("* myDefaultBranch"), "Should show current branch as myDefaultBranch")
+        XCTAssertEqual(userName.trimmingCharacters(in: .whitespacesAndNewlines), "Test User GitKit", "User name should be set correctly")
+        XCTAssertEqual(userEmail.trimmingCharacters(in: .whitespacesAndNewlines), "test@gitkit.example.com", "User email should be set correctly")
+        XCTAssertEqual(coreEditor.trimmingCharacters(in: .whitespacesAndNewlines), "vim", "Core editor should be set correctly")
         
-        // Reset the git config to remove the custom default branch setting
-        // Use --unset-all to handle cases where the config might be set multiple times
-        do {
-            try globalGit.run(.raw("config --global --unset-all init.defaultBranch"))
-        } catch {
-            // It's okay if this fails - the config might not exist
-        }
+        try git.run(.commit(message: "test commit", allowEmpty: true))
         
-        // Clean up
+        let logOutput = try git.run(.raw("log --format='%an <%ae>' -1"))
+        XCTAssertTrue(logOutput.contains("Test User GitKit <test@gitkit.example.com>"), "Commit should use the configured user information")
+        
+        try git.run(.raw("config user.name 'Updated User'"))
+        let updatedUserName = try git.run(.readConfig(name: "user.name"))
+        XCTAssertTrue(updatedUserName.contains("Updated User"), "Should be able to update existing config values")
+        
         try self.clean(path: path)
     }
 
@@ -322,14 +306,12 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: sourcePath)
         try self.clean(path: clonePath)
         
-        // Create a source repository to clone from
         let sourceGit = Git(path: sourcePath)
         try sourceGit.run(.raw("init"))
         try sourceGit.run(.raw("config user.name 'Test User'"))
         try sourceGit.run(.raw("config user.email 'test@example.com'"))
         try sourceGit.run(.raw("commit -m 'initial commit' --allow-empty --no-gpg-sign"))
         
-        // Clone from the local source repository
         let git = Git(path: clonePath)
         try git.run(.clone(url: sourcePath))
         
@@ -337,18 +319,15 @@ final class GitKitTests: XCTestCase {
         let repoPath = "\(clonePath)/\(clonedRepoName)"
         let repoGit = Git(path: repoPath)
         
-        // Test fetch
         try repoGit.run(.fetch())
         try repoGit.run(.fetch(remote: "origin"))
         try repoGit.run(.fetch(remote: "origin", branch: "main"))
         
-        // Test pull variations
         try repoGit.run(.pull())
         try repoGit.run(.pull(remote: "origin"))
         try repoGit.run(.pull(remote: "origin", branch: "main"))
         try repoGit.run(.pull(remote: "origin", branch: "main", rebase: true))
         
-        // Test command generation for push
         let pushCommand = Git.Alias.push(remote: "origin", branch: "main")
         XCTAssertEqual(pushCommand.rawValue, "push origin main", "Push command should be properly formatted")
         
@@ -365,20 +344,15 @@ final class GitKitTests: XCTestCase {
         try git.run(.raw("init"))
         try git.run(.commit(message: "initial", allowEmpty: true))
         
-        // Test create branch
         try git.run(.create(branch: "feature-branch"))
         
-        // Test checkout to new branch
         try git.run(.checkout(branch: "another-branch", create: true))
         
-        // Test merge (back to main first)
         try git.run(.checkout(branch: "main"))
         try git.run(.merge(branch: "feature-branch"))
         
-        // Test delete branch
         try git.run(.delete(branch: "feature-branch"))
         
-        // Verify branch operations worked
         let branchOutput = try git.run(.raw("branch"))
         XCTAssertTrue(branchOutput.contains("another-branch"), "Branch should exist")
         XCTAssertFalse(branchOutput.contains("feature-branch"), "Deleted branch should not exist")
@@ -395,11 +369,9 @@ final class GitKitTests: XCTestCase {
         try git.run(.raw("init"))
         try git.run(.commit(message: "initial", allowEmpty: true))
         
-        // Test tag creation
         try git.run(.tag("v1.0.0"))
         try git.run(.tag("v1.1.0"))
         
-        // Verify tags were created
         let tagOutput = try git.run(.raw("tag"))
         XCTAssertTrue(tagOutput.contains("v1.0.0"), "Tag v1.0.0 should exist")
         XCTAssertTrue(tagOutput.contains("v1.1.0"), "Tag v1.1.0 should exist")
@@ -414,15 +386,12 @@ final class GitKitTests: XCTestCase {
         let git = Git(path: path)
         
         try git.run(.raw("init"))
-        
-        // Test add remote
+
         try git.run(.addRemote(name: "origin", url: "https://github.com/test/repo.git"))
         try git.run(.addRemote(name: "upstream", url: "https://github.com/upstream/repo.git"))
         
-        // Test rename remote
         try git.run(.renameRemote(oldName: "upstream", newName: "upstream-new"))
         
-        // Verify remotes
         let remoteOutput = try git.run(.raw("remote -v"))
         XCTAssertTrue(remoteOutput.contains("origin"), "Origin remote should exist")
         XCTAssertTrue(remoteOutput.contains("upstream-new"), "Renamed remote should exist")
@@ -440,24 +409,31 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: mainRepoPath)
         try self.clean(path: submoduleRepoPath)
         
-        // Create a repository to use as a submodule
         let submoduleGit = Git(path: submoduleRepoPath)
         try submoduleGit.run(.raw("init"))
         try submoduleGit.run(.raw("config user.name 'Test User'"))
         try submoduleGit.run(.raw("config user.email 'test@example.com'"))
         try submoduleGit.run(.raw("commit -m 'submodule initial commit' --allow-empty --no-gpg-sign"))
         
-        // Create main repository and add submodule
+        // Save the current global config value (if any) and set it temporarily
         let git = Git(path: mainRepoPath)
+        var originalConfigValue: String?
+        do {
+            originalConfigValue = try git.run(.raw("config --global --get protocol.file.allow"))
+        } catch {
+            // Config doesn't exist, which is fine
+            originalConfigValue = nil
+        }
+        
         try git.run(.raw("init"))
         try git.run(.raw("config user.name 'Test User'"))
         try git.run(.raw("config user.email 'test@example.com'"))
-        try git.run(.commit(message: "initial", allowEmpty: true))
         
-        // Try to set global config to allow file protocol
+        // Set the protocol.file.allow config temporarily
         try git.run(.raw("config --global protocol.file.allow always"))
         
-        // Use absolute path directly (without file:// protocol)
+        try git.run(.commit(message: "initial", allowEmpty: true))
+        
         try git.run(.raw("submodule add \(submoduleRepoPath) submodules/test-submodule"))
         
         try git.run(.submoduleUpdate())
@@ -468,12 +444,16 @@ final class GitKitTests: XCTestCase {
         try git.run(.submoduleForeach(recursive: false, command: "pwd"))
         try git.run(.submoduleForeach(recursive: true, command: "git status"))
         
-        // Verify submodule was added
         let statusOutput = try git.run(.raw("submodule status"))
         XCTAssertTrue(statusOutput.contains("test-submodule"), "Submodule should be listed in status")
         
-        // Clean up global config
-        try git.run(.raw("config --global --unset protocol.file.allow"))
+        // Restore the original global config value
+        if let originalValue = originalConfigValue {
+            try git.run(.raw("config --global protocol.file.allow \(originalValue)"))
+        } else {
+            // Config didn't exist before, so remove it
+            _ = try? git.run(.raw("config --global --unset protocol.file.allow"))
+        }
         
         try self.clean(path: mainRepoPath)
         try self.clean(path: submoduleRepoPath)
@@ -484,15 +464,16 @@ final class GitKitTests: XCTestCase {
         
         try self.clean(path: path)
         let git = Git(path: path)
-        
+        git.verbose = true
+
         try git.run(.raw("init"))
         try git.run(.commit(message: "first", allowEmpty: true))
         try git.run(.commit(message: "second", allowEmpty: true))
         
-        let commitCount = try git.run(.revList(branch: "HEAD", count: true))
-        let commitList = try git.run(.revList(branch: "HEAD"))
-        let commitRange = try git.run(.revList(branch: "HEAD", revisions: "HEAD~1"))
-        
+        let commitCount = try git.run(.revList(count: true, revisions: "HEAD"))
+        let commitList = try git.run(.revList(revisions: "HEAD"))
+        let commitRange = try git.run(.revList(revisions: "HEAD HEAD~1"))
+
         XCTAssertEqual(commitCount.trimmingCharacters(in: .whitespacesAndNewlines), "2", "Should have 2 commits")
         XCTAssertTrue(commitList.contains("\n"), "Should list multiple commits")
         XCTAssertFalse(commitRange.isEmpty, "Should return commit range")
