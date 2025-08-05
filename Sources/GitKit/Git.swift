@@ -87,7 +87,6 @@ public final class Git: Shell {
                 if let options = options {
                     params.append(contentsOf: options)
                 }
-                params.append("--")
                 if let revisions = revisions {
                     params.append(revisions)
                 }
