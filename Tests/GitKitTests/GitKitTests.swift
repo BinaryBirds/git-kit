@@ -28,8 +28,7 @@ final class GitKitTests: XCTestCase {
         ("testRevParse", testRevParse),
         ("testAddAll", testAddAll),
         ("testStatusShort", testStatusShort),
-        ("testConfigOperations", testConfigOperations),
-        ("testWriteConfigUserSettings", testWriteConfigUserSettings),
+        ("testGitConfig", testGitConfig),
         ("testPushPull", testPushPull),
         ("testBranchOperations", testBranchOperations),
         ("testTagOperations", testTagOperations),
@@ -39,6 +38,7 @@ final class GitKitTests: XCTestCase {
         ("testLsRemote", testLsRemote),
         ("testCommitVariations", testCommitVariations),
         ("testLogVariations", testLogVariations),
+        ("testLogWithRevisions", testLogWithRevisions),
     ]
     
     // MARK: - helpers
@@ -117,7 +117,7 @@ final class GitKitTests: XCTestCase {
         let git = Git(path: clonePath)
         try git.run(.clone(url: sourcePath))
         
-        let clonedRepoName = sourcePath.components(separatedBy: "/").last!
+        let clonedRepoName = try XCTUnwrap(sourcePath.components(separatedBy: "/").last)
         let statusOutput = try git.run("cd \(clonePath)/\(clonedRepoName) && git status")
         XCTAssertTrue(statusOutput.contains("On branch main"), "Should be on main branch")
         XCTAssertTrue(statusOutput.contains("nothing to commit"), "Should be clean working directory")
@@ -171,7 +171,7 @@ final class GitKitTests: XCTestCase {
         let git = Git(path: clonePath)
         try git.run(.clone(url: sourcePath))
         
-        let clonedRepoName = sourcePath.components(separatedBy: "/").last!
+        let clonedRepoName = try XCTUnwrap(sourcePath.components(separatedBy: "/").last)
         let repoPath = "\(clonePath)/\(clonedRepoName)"
         let repoGit = Git(path: repoPath)
 
@@ -245,27 +245,7 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: path)
     }
 
-    func testConfigOperations() throws {
-        let path = self.currentPath()
-        
-        try self.clean(path: path)
-        let git = Git(path: path)
-        
-        try git.run(.raw("init"))
-        
-        try git.run(.raw("config user.name 'Test User'"))
-        try git.run(.raw("config user.email 'test@example.com'"))
-        
-        let userName = try git.run(.readConfig(name: "user.name"))
-        let userEmail = try git.run(.readConfig(name: "user.email"))
-        
-        XCTAssertEqual(userName, "Test User", "Should read the configured user name")
-        XCTAssertEqual(userEmail, "test@example.com", "Should read the configured user email")
-        
-        try self.clean(path: path)
-    }
-
-    func testWriteConfigUserSettings() throws {
+    func testGitConfig() throws {
         let path = self.currentPath()
         
         try self.clean(path: path)
@@ -273,9 +253,9 @@ final class GitKitTests: XCTestCase {
         let git = Git(path: path)
         try git.run(.raw("init"))
         
-        try git.run(.raw("config user.name 'Test User GitKit'"))
-        try git.run(.raw("config user.email 'test@gitkit.example.com'"))
-        try git.run(.raw("config core.editor 'vim'"))
+        try git.run(.writeConfig(name: "user.name", value: "\"Test User GitKit\""))
+        try git.run(.writeConfig(name: "user.email", value: "test@gitkit.example.com"))
+        try git.run(.writeConfig(name: "core.editor", value: "vim"))
         
         let userName = try git.run(.readConfig(name: "user.name"))
         let userEmail = try git.run(.readConfig(name: "user.email"))
@@ -290,7 +270,7 @@ final class GitKitTests: XCTestCase {
         let logOutput = try git.run(.raw("log --format='%an <%ae>' -1"))
         XCTAssertTrue(logOutput.contains("Test User GitKit <test@gitkit.example.com>"), "Commit should use the configured user information")
         
-        try git.run(.raw("config user.name 'Updated User'"))
+        try git.run(.writeConfig(name: "user.name", value: "\"Updated User\""))
         let updatedUserName = try git.run(.readConfig(name: "user.name"))
         XCTAssertTrue(updatedUserName.contains("Updated User"), "Should be able to update existing config values")
         
@@ -315,7 +295,7 @@ final class GitKitTests: XCTestCase {
         let git = Git(path: clonePath)
         try git.run(.clone(url: sourcePath))
         
-        let clonedRepoName = sourcePath.components(separatedBy: "/").last!
+        let clonedRepoName = try XCTUnwrap(sourcePath.components(separatedBy: "/").last)
         let repoPath = "\(clonePath)/\(clonedRepoName)"
         let repoGit = Git(path: repoPath)
         
@@ -574,7 +554,6 @@ final class GitKitTests: XCTestCase {
         XCTAssertTrue(onelineLog.contains("third commit"), "Oneline log should contain third commit")
         XCTAssertFalse(onelineLog.contains("Author:"), "Oneline log should NOT contain author info")
         XCTAssertFalse(onelineLog.contains("Date:"), "Oneline log should NOT contain date info")
-        // Oneline format should be much more compact
         XCTAssertTrue(onelineLog.count < fullLog.count / 2, "Oneline log should be much shorter than full log")
         
         XCTAssertEqual(prettyLog.trimmingCharacters(in: .whitespacesAndNewlines), "third commit", "Pretty log should contain only the commit message")
@@ -585,6 +564,26 @@ final class GitKitTests: XCTestCase {
         XCTAssertTrue(singleCommitLog.contains("third commit"), "Single commit log should contain latest commit")
         XCTAssertFalse(singleCommitLog.contains("second commit"), "Single commit log should NOT contain second commit")
         XCTAssertFalse(singleCommitLog.contains("first commit"), "Single commit log should NOT contain first commit")
+        
+        try self.clean(path: path)
+    }
+
+    func testLogWithRevisions() throws {
+        let path = self.currentPath()
+        
+        try self.clean(path: path)
+        let git = Git(path: path)
+
+        try git.run(.raw("init"))
+        try git.run(.commit(message: "first commit", allowEmpty: true))
+        try git.run(.commit(message: "second commit", allowEmpty: true))
+        try git.run(.commit(message: "third commit", allowEmpty: true))
+
+        let logWithRevisions = try git.run(.log(revisions: "@^^..@^"))
+
+        XCTAssertTrue(logWithRevisions.contains("second commit"), "Log with @^^..@^ revision should contain second commit")
+        XCTAssertFalse(logWithRevisions.contains("first commit"), "Log with @^^..@^ revision should NOT contain first commit")
+        XCTAssertFalse(logWithRevisions.contains("third commit"), "Log with @^^..@^ revision should NOT contain third commit")
         
         try self.clean(path: path)
     }
