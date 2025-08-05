@@ -19,7 +19,6 @@ extension String {
 }
 
 final class GitKitTests: XCTestCase {
-
     static var allTests = [
         ("testInit", testInit),
         ("testLog", testLog),
@@ -125,7 +124,6 @@ final class GitKitTests: XCTestCase {
         try self.clean(path: sourcePath)
         try self.clean(path: clonePath)
     }
-
 
     func testCloneWithDirectory() throws {
         let basePath = self.currentPath()
