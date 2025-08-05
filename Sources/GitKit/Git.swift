@@ -16,7 +16,6 @@ public final class Git: Shell {
         case cmd(Command, String? = nil)
         case addAll
         case status(short: Bool = false)
-        case clone(url: String , dirName: String? = nil)
         case commit(message: String, allowEmpty: Bool = false, gpgSigned: Bool = false)
         case writeConfig(name: String, value: String)
         case readConfig(name: String)
@@ -168,12 +167,6 @@ public final class Git: Shell {
                 if let revisions = revisions {
                     params.append(revisions)
                 }
-            case .revParse(let abbrevRef, let revision):
-                params = [Command.revParse.rawValue]
-                if abbrevRef {
-                    params.append("--abbrev-ref")
-                }
-                params.append(revision)
             case .lsRemote(url: let url, limitToHeads: let limitToHeads):
                 params = [Command.lsRemote.rawValue]
                 if limitToHeads {
