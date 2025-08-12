@@ -38,6 +38,8 @@ final class GitKitTests: XCTestCase {
         ("testCommitVariations", testCommitVariations),
         ("testLogVariations", testLogVariations),
         ("testLogWithRevisions", testLogWithRevisions),
+        ("testPathsWithSpaces", testPathsWithSpaces),
+        ("testCloneWithSpacesInDirectoryName", testCloneWithSpacesInDirectoryName),
     ]
     
     // MARK: - helpers
@@ -584,6 +586,82 @@ final class GitKitTests: XCTestCase {
         XCTAssertFalse(logWithRevisions.contains("third commit"), "Log with @^^..@^ revision should NOT contain third commit")
         
         try self.clean(path: path)
+    }
+
+    func testPathsWithSpaces() throws {
+        let basePath = self.currentPath()
+        let pathWithSpaces = "\(basePath) with spaces"
+        
+        try self.clean(path: pathWithSpaces)
+        
+        let git = Git(path: pathWithSpaces)
+        
+        // Test basic operations in a path with spaces
+        try git.run(.raw("init"))
+        try git.run(.raw("config user.name 'Test User'"))
+        try git.run(.raw("config user.email 'test@example.com'"))
+        
+        // Create a file and test git operations
+        FileManager.default.createFile(atPath: "\(pathWithSpaces)/test file.txt", contents: "test content".data(using: .utf8))
+        
+        try git.run(.addAll)
+        let statusOutput = try git.run(.status(short: true))
+        XCTAssertTrue(statusOutput.contains("A"), "File should be staged")
+        
+        try git.run(.commit(message: "test commit with spaces in path", allowEmpty: false))
+        
+        let logOutput = try git.run(.log(numberOfCommits: 1, options: ["--oneline"]))
+        XCTAssertTrue(logOutput.contains("test commit with spaces in path"), "Commit should be successful")
+        
+        // Test status after commit
+        let cleanStatus = try git.run(.status(short: true))
+        XCTAssertTrue(cleanStatus.isEmpty, "Working directory should be clean after commit")
+        
+        try self.clean(path: pathWithSpaces)
+    }
+
+    func testCloneWithSpacesInDirectoryName() throws {
+        let basePath = self.currentPath()
+        let currentDirectory = FileManager.default.currentDirectoryPath
+        let sourcePath = "\(currentDirectory)/\(basePath)-source"
+        let clonePath = "\(currentDirectory)/\(basePath) clone path"
+        let targetDirName = "repo with spaces"
+        
+        try self.clean(path: sourcePath)
+        try self.clean(path: clonePath)
+        
+        // Create source repository
+        let sourceGit = Git(path: sourcePath)
+        try sourceGit.run(.raw("init"))
+        try sourceGit.run(.raw("config user.name 'Test User'"))
+        try sourceGit.run(.raw("config user.email 'test@example.com'"))
+        try sourceGit.run(.raw("commit -m 'initial commit' --allow-empty --no-gpg-sign"))
+        
+        // Test cloning into a path with spaces
+        let git = Git(path: clonePath)
+        try git.run(.clone(url: sourcePath, dirName: targetDirName))
+        
+        // Verify the clone was successful
+        let clonedRepoPath = "\(clonePath)/\(targetDirName)"
+        XCTAssertTrue(FileManager.default.fileExists(atPath: clonedRepoPath), "Cloned repository should exist")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: "\(clonedRepoPath)/.git"), "Cloned repository should have .git directory")
+        
+        // Test git operations in the cloned repo with spaces in path
+        let clonedGit = Git(path: clonedRepoPath)
+        let statusOutput = try clonedGit.run(.status())
+        XCTAssertTrue(statusOutput.contains("On branch main"), "Should be on main branch")
+        XCTAssertTrue(statusOutput.contains("nothing to commit"), "Should be clean working directory")
+        
+        // Test creating and committing a file with spaces in the repo path
+        FileManager.default.createFile(atPath: "\(clonedRepoPath)/file with spaces.txt", contents: "content".data(using: .utf8))
+        try clonedGit.run(.addAll)
+        try clonedGit.run(.commit(message: "add file with spaces"))
+        
+        let logOutput = try clonedGit.run(.log(numberOfCommits: 1, options: ["--oneline"]))
+        XCTAssertTrue(logOutput.contains("add file with spaces"), "New commit should exist")
+        
+        try self.clean(path: sourcePath)
+        try self.clean(path: clonePath)
     }
 
     #if os(macOS)
