@@ -76,7 +76,7 @@ public final class Git: Shell {
             case .clone(let url, let dirname):
                 params = [Command.clone.rawValue, url]
                 if let dirName = dirname {
-                    params.append(dirName)
+                    params.append("\"\(dirName)\"")
                 }
             case .checkout(let branch, let create, let tracking):
                 params = [Command.checkout.rawValue]
@@ -281,14 +281,15 @@ public final class Git: Shell {
         var cmd: [String] = []
         // if there is a path let's change directory first
         if let path = self.path {
+            let quotedPath = "\"\(path)\""
             // try to create work dir at given path for init or clone commands
             if
                 alias.rawValue.hasPrefix(Command.initialize.rawValue) ||
                 alias.rawValue.hasPrefix(Command.clone.rawValue)
             {
-                cmd += ["mkdir", "-p", path, "&&"]
+                cmd += ["mkdir", "-p", quotedPath, "&&"]
             }
-            cmd += ["cd", path, "&&"]
+            cmd += ["cd", quotedPath, "&&"]
         }
         cmd += ["git", alias.rawValue]
         
