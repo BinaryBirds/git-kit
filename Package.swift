@@ -6,12 +6,13 @@ let package = Package(
     products: [
         .library(name: "GitKit", targets: ["GitKit"]),
     ],
-    dependencies: [
-        .package(url: "https://github.com/binarybirds/shell-kit", from: "1.0.0"),
-    ],
+    dependencies: [],
     targets: [
+        // Vendored from BinaryBirds/shell-kit (WTFPL); the upstream repo was
+        // deleted from GitHub and can no longer be resolved as a dependency.
+        .target(name: "ShellKit"),
         .target(name: "GitKit", dependencies: [
-            .product(name: "ShellKit", package: "shell-kit"),
+            "ShellKit",
         ]),
         .testTarget(name: "GitKitTests", dependencies: ["GitKit"]),
     ]
