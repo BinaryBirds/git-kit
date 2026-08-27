@@ -6,10 +6,29 @@
     Copyright Binary Birds. All rights reserved.
  */
 
-import ShellKit
+import Foundation
+import Subprocess
+import System
 
 /// a Git wrapper class
-public final class Git: Shell {
+public final class Git {
+
+    /// git errors
+    public enum Error: LocalizedError {
+        /// invalid shell output data error
+        case outputData
+        /// generic error, the first parameter is the error code, the second is the error message
+        case generic(Int, String)
+
+        public var errorDescription: String? {
+            switch self {
+            case .outputData:
+                return "Invalid or empty shell output."
+            case .generic(let code, let message):
+                return message + " (code: \(code))"
+            }
+        }
+    }
 
     /// Git aliases to make the API more convenient
     public enum Alias {
@@ -263,8 +282,9 @@ public final class Git: Shell {
         case lsRemote = "ls-remote"
     }
     
+
     // MARK: - private helper methods
-    
+
     /**
         This method helps to assemble a Git command string from an alias
      
@@ -273,7 +293,6 @@ public final class Git: Shell {
      
         - Parameters:
             - alias: The git alias to be executed
-            - args: Additional arguments for the Git alias
      
         - Returns: The Git command
      */
@@ -292,7 +311,7 @@ public final class Git: Shell {
             cmd += ["cd", quotedPath, "&&"]
         }
         cmd += ["git", alias.rawValue]
-        
+
         let command = cmd.joined(separator: " ")
 
         if self.verbose {
@@ -300,7 +319,7 @@ public final class Git: Shell {
         }
         return command
     }
-    
+
     // MARK: - public api
 
     /// work directory, if peresent a directory change will occur before running any Git commands
@@ -308,10 +327,19 @@ public final class Git: Shell {
     /// NOTE: if the git init command is called with a non-existing path, directories
     /// presented in the path string will be created recursively
     public var path: String?
-    
+
     // prints git commands constructed from the alias before execution
     public var verbose = false
-    
+
+    /// the shell used to interpret commands, by default: /bin/sh
+    public var type: String
+
+    /// custom env variables exposed to the shell
+    public var env: [String: String]
+
+    /// maximum number of bytes collected from the shell's standard output and standard error
+    public var maxOutputSize: Int
+
     /**
         Initializes a new Git object
      
@@ -319,12 +347,19 @@ public final class Git: Shell {
             - path: The path of the Swift package (work directory)
             - type: The type of the shell, default: /bin/sh
             - env: Additional environment variables for the shell, default: empty
+            - maxOutputSize: Maximum bytes to collect from stdout and stderr, default: 16MB
      
      */
-    public init(path: String? = nil, type: String = "/bin/sh", env: [String: String] = [:]) {
+    public init(
+        path: String? = nil,
+        type: String = "/bin/sh",
+        env: [String: String] = [:],
+        maxOutputSize: Int = 16 * 1024 * 1024
+    ) {
         self.path = path
-
-        super.init(type, env: env)
+        self.type = type
+        self.env = env
+        self.maxOutputSize = maxOutputSize
     }
 
     /**
@@ -334,27 +369,70 @@ public final class Git: Shell {
             - alias: The git command alias to be executed
 
         - Throws:
-            `ShellError.outputData` if the command execution succeeded but the output is empty,
-            otherwise `ShellError.generic(Int, String)` where the first parameter is the exit code,
-            the second is the error message
+            `Git.Error.outputData` if the command execution succeeded but the output could not be
+            decoded, otherwise `Git.Error.generic(Int, String)` where the first parameter is the
+            exit code, the second is the error message
      
         - Returns: The output string of the command without trailing newlines
      */
     @discardableResult
-    public func run(_ alias: Alias) throws -> String {
-        try self.run(self.rawCommand(alias))
+    public func run(_ alias: Alias) async throws -> String {
+        try await self.run(self.rawCommand(alias))
     }
 
     /**
-        Async version of the run function
+        Runs a raw command through the current shell.
      
         - Parameters:
-            - alias: The git command alias to be executed
-            - completion: The completion block with the output and error
+            - command: The command to be executed
 
-        The command will be executed on a concurrent dispatch queue.
+        - Throws:
+            `Git.Error.outputData` if the command execution succeeded but the output could not be
+            decoded, otherwise `Git.Error.generic(Int, String)` where the first parameter is the
+            exit code, the second is the error message
+     
+        - Returns: The output string of the command without trailing newlines
      */
-    public func run(_ alias: Alias, completion: @escaping ((String?, Swift.Error?) -> Void)) {
-        self.run(self.rawCommand(alias), completion: completion)
+    @discardableResult
+    public func run(_ command: String) async throws -> String {
+        var overrides: [Environment.Key: String?] = [:]
+        for (key, value) in self.env {
+            guard let key = Environment.Key(rawValue: key) else { continue }
+            overrides[key] = value
+        }
+        let environment: Environment = overrides.isEmpty
+            ? .inherit
+            : .inherit.updating(overrides)
+
+        let result = try await Subprocess.run(
+            .path(FilePath(self.type)),
+            arguments: Arguments(["-c", command]),
+            environment: environment,
+            output: .string(limit: self.maxOutputSize),
+            error: .string(limit: self.maxOutputSize)
+        )
+
+        guard result.terminationStatus.isSuccess else {
+            let code: Int
+            switch result.terminationStatus {
+            case .exited(let status): code = Int(status)
+            case .signaled(let signal): code = Int(signal)
+            }
+            let message = result.standardError?
+                .trimmingCharacters(in: .newlines)
+                .nilIfEmpty ?? "Unknown error"
+            throw Error.generic(code, message)
+        }
+
+        guard let output = result.standardOutput else {
+            throw Error.outputData
+        }
+        return output.trimmingCharacters(in: .newlines)
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        self.isEmpty ? nil : self
     }
 }
